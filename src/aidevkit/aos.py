@@ -12,6 +12,8 @@
 """
 from __future__ import unicode_literals, print_function, division
 
+from abc import abstractmethod
+
 if False:
     from typing import *
 import os
@@ -22,93 +24,118 @@ from qcloud_cos import CosS3Client
 import torch
 
 
-def get_client():
-    # 配置信息
-    config = CosConfig(
-        Region=os.environ['COS_Region'],
-        SecretId=os.environ['COS_SecretId'],
-        SecretKey=os.environ['COS_SecretKey'],
-    )
-
-    # 创建客户端
-    client = CosS3Client(config)
-
-    return client
-
-
-def save_object(obj, file_path):
-    if not os.path.isdir('./cos_work'):
-        os.mkdir('./cos_work')
-    local_path = os.path.join('./cos_work', file_path)
-
-    torch.save(obj.state_dict(), local_path)
-
-    # 创建客户端
-    client = get_client()
-
-    response = client.upload_file(
-        Bucket=os.environ['COS_Bucket'],
-        LocalFilePath=local_path,
-        Key=file_path,
-    )
-
-
-def object_exists(file_path):
-    # 创建客户端
-    client = get_client()
-
-    response = client.object_exists(
-        Bucket=os.environ['COS_Bucket'],
-        Key=file_path,
-    )
-
-    return response
-
-
-def load_object(obj, file_path):
-    """
-
-    :param obj:
-    :param file_path:
-    :return:
-    """
-    if not os.path.isdir('./cos_work'):
-        os.mkdir('./cos_work')
-    local_path = os.path.join('./cos_work', file_path)
-
-    if not os.path.isfile(local_path):
-        # 创建客户端
-        client = get_client()
-
-        client.download_file(
-            Bucket=os.environ['COS_Bucket'],
-            Key=file_path,
-            DestFilePath=local_path,
-        )
-
-    obj.load_state_dict(torch.load(local_path))
-
-
-class Saver:
+class Saver(object):
     def __init__(self, make_obj_callback, file_path, save_interval=256):
         self.obj = make_obj_callback()
         self.file_path = file_path
         self.save_interval = save_interval
         self.count = 0
-        if object_exists(file_path):
+        if os.path.isfile(self.local_path) or self.object_exists():
             logging.debug('load_object')
-            load_object(self.obj, self.file_path)
+            self.load_object()
+
+    @property
+    def local_path(self):
+        return os.path.join('./aos_work', self.file_path)
+
+    def load_object(self):
+        if not os.path.isfile(self.local_path):
+            self.download_object()
+
+        self.obj.load_state_dict(torch.load(self.local_path))
+
+    def save_object(self):
+        if not os.path.isdir('./aos_work'):
+            os.mkdir('./aos_work')
+
+        torch.save(self.obj.state_dict(), self.local_path)
+
+        self.upload_object()
 
     def step(self):
         self.count += 1
         if self.count >= self.save_interval:
-            save_object(self.obj, self.file_path)
+            self.save_object()
             self.count = 0
             logging.debug('auto_save')
 
     def must_save(self):
-        save_object(self.obj, self.file_path)
+        self.save_object()
         logging.debug('must_save')
 
+    @abstractmethod
+    def object_exists(self):
+        pass
 
-__all__ = ['save_object', 'object_exists', 'load_object', 'Saver']
+    @abstractmethod
+    def upload_object(self):
+        pass
+
+    @abstractmethod
+    def download_object(self):
+        pass
+
+
+class CosSaver(Saver):
+    @staticmethod
+    def get_client():
+        # 配置信息
+        config = CosConfig(
+            Region=os.environ['COS_Region'],
+            SecretId=os.environ['COS_SecretId'],
+            SecretKey=os.environ['COS_SecretKey'],
+        )
+
+        # 创建客户端
+        client = CosS3Client(config)
+
+        return client
+
+    def object_exists(self):
+        # 创建客户端
+        client = self.get_client()
+
+        response = client.object_exists(
+            Bucket=os.environ['COS_Bucket'],
+            Key=self.file_path,
+        )
+
+        return response
+
+    def download_object(self):
+        # 创建客户端
+        client = self.get_client()
+
+        client.download_file(
+            Bucket=os.environ['COS_Bucket'],
+            Key=self.file_path,
+            DestFilePath=self.local_path,
+        )
+
+    def upload_object(self):
+        # 创建客户端
+        client = self.get_client()
+
+        response = client.upload_file(
+            Bucket=os.environ['COS_Bucket'],
+            LocalFilePath=self.local_path,
+            Key=self.file_path,
+        )
+        logging.debug('upload_file {}'.format(response))
+
+
+class AutoDL(Saver):
+    # root = '/root/autodl-fs'
+    root = './autodl-fs'
+
+    def object_exists(self):
+        return os.path.isfile(os.path.join(self.root, self.file_path))
+
+    def upload_object(self):
+        os.system('cp {} {}'.format(self.local_path, os.path.join(self.root, self.file_path)))
+
+    def download_object(self):
+        os.system('cp {} {}'.format(os.path.join(self.root, self.file_path), self.local_path))
+
+
+__all__ = ['Saver', 'CosSaver', 'AutoDL']

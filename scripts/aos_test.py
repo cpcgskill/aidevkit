@@ -15,7 +15,7 @@ from __future__ import unicode_literals, print_function, division
 if False:
     pass
 import torch
-from aidevkit.aos import object_exists, Saver
+from aidevkit.aos import CosSaver, AutoDL
 
 
 class MyModule(torch.nn.Module):
@@ -28,8 +28,10 @@ class MyModule(torch.nn.Module):
         return self.linear(x)
 
 
-print('object_exists', object_exists('a_dose_not_exist.pt'))
-print('object_exists', object_exists('test.pt'))
-saver = Saver(lambda: MyModule(), 'test.pt', 3)
-for i in range(100):
+saver = CosSaver(lambda: MyModule(), 'test.pt', 3)
+for i in range(3):
+    saver.step()
+
+saver = AutoDL(lambda: MyModule(), 'test.pt', 3)
+for i in range(3):
     saver.step()
