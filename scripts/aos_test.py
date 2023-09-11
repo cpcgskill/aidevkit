@@ -15,7 +15,7 @@ from __future__ import unicode_literals, print_function, division
 if False:
     pass
 import torch
-from aidevkit.aos import CosSaver, AutoDL
+from aidevkit.aos import CosSaver, AutoDLSaver
 
 
 class MyModule(torch.nn.Module):
@@ -32,6 +32,6 @@ saver = CosSaver(lambda: MyModule(), 'test.pt', 3)
 for i in range(3):
     saver.step()
 
-saver = AutoDL(lambda: MyModule(), 'test.pt', 3)
+saver = AutoDLSaver(lambda: MyModule(), 'test.pt', 3)
 for i in range(3):
     saver.step()

@@ -124,7 +124,7 @@ class CosSaver(Saver):
         logging.debug('upload_file {}'.format(response))
 
 
-class AutoDL(Saver):
+class AutoDLSaver(Saver):
     # root = '/root/autodl-fs'
     root = './autodl-fs'
 
@@ -138,4 +138,4 @@ class AutoDL(Saver):
         os.system('cp {} {}'.format(os.path.join(self.root, self.file_path), self.local_path))
 
 
-__all__ = ['Saver', 'CosSaver', 'AutoDL']
+__all__ = ['Saver', 'CosSaver', 'AutoDLSaver']
