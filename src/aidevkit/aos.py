@@ -125,8 +125,7 @@ class CosSaver(Saver):
 
 
 class AutoDLSaver(Saver):
-    # root = '/root/autodl-fs'
-    root = './autodl-fs'
+    root = '/root/autodl-fs'
 
     def object_exists(self):
         return os.path.isfile(os.path.join(self.root, self.file_path))
