@@ -24,7 +24,7 @@ lib_name = 'aidevkit'
 author = 'cpcgskill'
 author_email = 'cpcgskill@outlook.com'
 
-version = '0.3.2'
+version = '0.3.3'
 
 description = '一些ai开发过程中使用到的工具模块'
 

@@ -40,6 +40,8 @@ class Saver(object):
 
     def load_object(self):
         if not os.path.isfile(self.local_path):
+            if not os.path.isdir('./aos_work'):
+                os.mkdir('./aos_work')
             self.download_object()
 
         self.obj.load_state_dict(torch.load(self.local_path))
